@@ -810,7 +810,7 @@ const exec_with_error_check_1 = __nccwpck_require__(3161);
 class MacBuilder {
     static run(actionFolder, silent = false) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield (0, exec_with_error_check_1.execWithErrorCheck)('bash', [`${actionFolder}/entrypoint.sh`], {
+            yield (0, exec_with_error_check_1.execWithErrorCheck)('bash', [`${actionFolder}/platforms/mac/entrypoint.sh`], {
                 silent,
             });
         });
