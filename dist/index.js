@@ -159,7 +159,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const Action = {
     get supportedPlatforms() {
-        return ['linux', 'win32'];
+        return ['linux', 'win32', 'darwin'];
     },
     get isRunningLocally() {
         return process.env.RUNNER_WORKSPACE === undefined;
