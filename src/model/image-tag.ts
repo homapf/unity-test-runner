@@ -71,6 +71,8 @@ class ImageTag {
         return Platform.types.StandaloneLinux64;
       case 'win32':
         return Platform.types.StandaloneWindows;
+      case 'darwin':
+        return Platform.types.StandaloneOSX;
       default:
         throw new Error(
           `The Operating System of this runner, "${platform}", is not yet supported.`,

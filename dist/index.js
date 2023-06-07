@@ -89,10 +89,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const model_1 = __nccwpck_require__(1359);
+const mac_builder_1 = __importDefault(__nccwpck_require__(9364));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -102,20 +106,25 @@ function run() {
             const baseImage = new model_1.ImageTag({ editorVersion, customImage });
             const runnerContext = model_1.Action.runnerContext();
             try {
-                yield model_1.Docker.run(baseImage, Object.assign({ actionFolder,
-                    editorVersion,
-                    workspace,
-                    projectPath,
-                    customParameters,
-                    testMode,
-                    coverageOptions,
-                    artifactsPath,
-                    useHostNetwork,
-                    sshAgent,
-                    gitPrivateToken,
-                    githubToken,
-                    chownFilesTo,
-                    unityLicensingServer }, runnerContext));
+                if (process.platform === 'darwin') {
+                    mac_builder_1.default.run(actionFolder);
+                }
+                else {
+                    yield model_1.Docker.run(baseImage, Object.assign({ actionFolder,
+                        editorVersion,
+                        workspace,
+                        projectPath,
+                        customParameters,
+                        testMode,
+                        coverageOptions,
+                        artifactsPath,
+                        useHostNetwork,
+                        sshAgent,
+                        gitPrivateToken,
+                        githubToken,
+                        chownFilesTo,
+                        unityLicensingServer }, runnerContext));
+                }
             }
             finally {
                 yield model_1.Output.setArtifactsPath(artifactsPath);
@@ -252,6 +261,8 @@ const Docker = {
                     break;
                 case 'win32':
                     runCommand = this.getWindowsCommand(image, parameters);
+                case 'darwin':
+                    runCommand = this.getMacCommand(image, parameters);
                     break;
                 default:
                     throw new Error(`Operation system, ${process.platform}, is not supported yet.`);
@@ -378,8 +389,111 @@ const Docker = {
                 ${image} \
                 powershell c:/dist/entrypoint.ps1`;
     },
+    getMacCommand(image, parameters) {
+        const { actionFolder, editorVersion, workspace, projectPath, customParameters, testMode, coverageOptions, artifactsPath, useHostNetwork, sshAgent, gitPrivateToken, githubToken, runnerTemporaryPath, chownFilesTo, unityLicensingServer, } = parameters;
+        const githubHome = path_1.default.join(runnerTemporaryPath, '_github_home');
+        if (!(0, fs_1.existsSync)(githubHome))
+            (0, fs_1.mkdirSync)(githubHome);
+        const cidfile = containerIdFilePath(parameters);
+        const githubWorkflow = path_1.default.join(runnerTemporaryPath, '_github_workflow');
+        if (!(0, fs_1.existsSync)(githubWorkflow))
+            (0, fs_1.mkdirSync)(githubWorkflow);
+        const testPlatforms = (testMode === 'all' ? ['playmode', 'editmode', 'COMBINE_RESULTS'] : [testMode]).join(';');
+        return `docker run \
+                --workdir /github/workspace \
+                --cidfile "${cidfile}" \
+                --rm \
+                --env UNITY_LICENSE \
+                --env UNITY_LICENSE_FILE \
+                --env UNITY_EMAIL \
+                --env UNITY_PASSWORD \
+                --env UNITY_SERIAL \
+                --env UNITY_LICENSING_SERVER="${unityLicensingServer}" \
+                --env UNITY_VERSION="${editorVersion}" \
+                --env PROJECT_PATH="${projectPath}" \
+                --env CUSTOM_PARAMETERS="${customParameters}" \
+                --env TEST_PLATFORMS="${testPlatforms}" \
+                --env COVERAGE_OPTIONS="${coverageOptions}" \
+                --env COVERAGE_RESULTS_PATH="CodeCoverage" \
+                --env ARTIFACTS_PATH="${artifactsPath}" \
+                --env GITHUB_REF \
+                --env GITHUB_SHA \
+                --env GITHUB_REPOSITORY \
+                --env GITHUB_ACTOR \
+                --env GITHUB_WORKFLOW \
+                --env GITHUB_HEAD_REF \
+                --env GITHUB_BASE_REF \
+                --env GITHUB_EVENT_NAME \
+                --env GITHUB_WORKSPACE="/github/workspace" \
+                --env GITHUB_ACTION \
+                --env GITHUB_EVENT_PATH \
+                --env RUNNER_OS \
+                --env RUNNER_TOOL_CACHE \
+                --env RUNNER_TEMP \
+                --env RUNNER_WORKSPACE \
+                --env GIT_PRIVATE_TOKEN="${gitPrivateToken}" \
+                --env CHOWN_FILES_TO="${chownFilesTo}" \
+                ${sshAgent ? '--env SSH_AUTH_SOCK=c:/ssh-agent' : ''} \
+                --volume "${actionFolder}/test-standalone-scripts":"c:/UnityStandaloneScripts" \
+                --volume "${githubHome}":"c:/root" \
+                --volume "${githubWorkflow}":"c:/github/workflow" \
+                --volume "${workspace}":"c:/github/workspace" \
+                --volume "${actionFolder}/steps":"c:/steps" \
+                --volume "${actionFolder}":"c:/dist" \
+                ${sshAgent ? `--volume ${sshAgent}:c:/ssh-agent` : ''} \
+                ${sshAgent
+            ? `--volume c:/Users/Administrator/.ssh/known_hosts:c:/root/.ssh/known_hosts`
+            : ''} \
+                ${useHostNetwork ? '--net=host' : ''} \
+                ${githubToken ? '--env USE_EXIT_CODE=false' : '--env USE_EXIT_CODE=true'} \
+                ${image} \
+                powershell c:/dist/entrypoint.ps1`;
+    },
 };
 exports["default"] = Docker;
+
+
+/***/ }),
+
+/***/ 3161:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.execWithErrorCheck = void 0;
+const exec_1 = __nccwpck_require__(1514);
+function execWithErrorCheck(commandLine, arguments_, options, errorWhenMissingUnityBuildResults = true) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const result = yield (0, exec_1.getExecOutput)(commandLine, arguments_, options);
+        if (!errorWhenMissingUnityBuildResults) {
+            return result.exitCode;
+        }
+        // Check for errors in the Build Results section
+        const match = result.stdout.match(/^#\s*Build results\s*#(.*)^Size:/ms);
+        if (match) {
+            const buildResults = match[1];
+            const errorMatch = buildResults.match(/^Errors:\s*(\d+)$/m);
+            if (errorMatch && Number.parseInt(errorMatch[1], 10) !== 0) {
+                throw new Error(`There was an error building the project. Please read the logs for details.`);
+            }
+        }
+        else {
+            throw new Error(`There was an error building the project. Please read the logs for details.`);
+        }
+        return result.exitCode;
+    });
+}
+exports.execWithErrorCheck = execWithErrorCheck;
 
 
 /***/ }),
@@ -443,6 +557,8 @@ class ImageTag {
                 return platform_1.default.types.StandaloneLinux64;
             case 'win32':
                 return platform_1.default.types.StandaloneWindows;
+            case 'darwin':
+                return platform_1.default.types.StandaloneOSX;
             default:
                 throw new Error(`The Operating System of this runner, "${platform}", is not yet supported.`);
         }
@@ -671,6 +787,36 @@ class LicensingServerSetup {
     }
 }
 exports["default"] = LicensingServerSetup;
+
+
+/***/ }),
+
+/***/ 9364:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const exec_with_error_check_1 = __nccwpck_require__(3161);
+class MacBuilder {
+    static run(actionFolder, silent = false) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, exec_with_error_check_1.execWithErrorCheck)('bash', [`${actionFolder}/entrypoint.sh`], {
+                silent,
+            });
+        });
+    }
+}
+exports["default"] = MacBuilder;
 
 
 /***/ }),

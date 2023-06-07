@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { Action, Docker, ImageTag, Input, Output, ResultsCheck } from './model';
+import MacBuilder from './model/mac-builder';
 
 export async function run() {
   try {
@@ -26,23 +27,28 @@ export async function run() {
     const runnerContext = Action.runnerContext();
 
     try {
-      await Docker.run(baseImage, {
-        actionFolder,
-        editorVersion,
-        workspace,
-        projectPath,
-        customParameters,
-        testMode,
-        coverageOptions,
-        artifactsPath,
-        useHostNetwork,
-        sshAgent,
-        gitPrivateToken,
-        githubToken,
-        chownFilesTo,
-        unityLicensingServer,
-        ...runnerContext,
-      });
+      if (process.platform === 'darwin') {
+        MacBuilder.run(actionFolder);
+      }
+      else {
+        await Docker.run(baseImage, {
+          actionFolder,
+          editorVersion,
+          workspace,
+          projectPath,
+          customParameters,
+          testMode,
+          coverageOptions,
+          artifactsPath,
+          useHostNetwork,
+          sshAgent,
+          gitPrivateToken,
+          githubToken,
+          chownFilesTo,
+          unityLicensingServer,
+          ...runnerContext,
+        });
+      }
     } finally {
       await Output.setArtifactsPath(artifactsPath);
       await Output.setCoveragePath('CodeCoverage');
